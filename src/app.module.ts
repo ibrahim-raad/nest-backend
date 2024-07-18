@@ -5,11 +5,12 @@ import { UsersModule } from './users/users.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { User } from './users/user.entity';
+import { AuthModule } from './auth/auth.module';
 
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({ isGlobal: true }),
     UsersModule,
     TypeOrmModule.forRoot({
       type: process.env.DB_TYPE as any,
@@ -21,6 +22,7 @@ import { User } from './users/user.entity';
       entities:[User],
       synchronize: true,
     }),
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

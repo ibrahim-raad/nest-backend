@@ -4,7 +4,9 @@ services:
   nestapp:
     container_name: nestapp
     image: ibrahim/nestapp:1.0.0
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
@@ -12,8 +14,9 @@ services:
       - PG_HOST=db
       - PG_USER=postgres
       - PG_PASSWORD=flysql
-      - PG_DB=postgres
+      - PG_DB=nestdb
       - PG_PORT=5432
+      - JWT_SECRET=why
     depends_on:
       - db
   db:
