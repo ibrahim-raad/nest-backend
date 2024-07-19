@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { RefreshToken } from './auth/refresh-token.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './auth/strategy';
+import { ResetToken } from './auth/reset-token.entity';
 
 
 @Module({
@@ -26,7 +27,7 @@ import { JwtStrategy } from './auth/strategy';
       username: process.env.PG_USER,
       password: process.env.PG_PASSWORD,
       database: process.env.PG_DB,
-      entities:[User, RefreshToken],
+      entities:[User, RefreshToken, ResetToken],
       synchronize: true,
     }),
     AuthModule,

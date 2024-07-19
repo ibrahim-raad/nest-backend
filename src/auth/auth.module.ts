@@ -8,10 +8,12 @@ import { UsersModule } from 'src/users/users.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from 'src/users/user.entity';
 import { RefreshToken } from './refresh-token.entity';
+import { ResetToken } from './reset-token.entity';
+import { MailerService } from './services/mail.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, RefreshToken]),
+    TypeOrmModule.forFeature([User, RefreshToken, ResetToken]),
     JwtModule.register({
       secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '80m' },
@@ -22,7 +24,7 @@ import { RefreshToken } from './refresh-token.entity';
     UsersModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, MailerService],
   exports: [AuthService]
 
 })

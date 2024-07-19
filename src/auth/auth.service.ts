@@ -3,6 +3,7 @@ import {
      ForbiddenException,
       Injectable,
        InternalServerErrorException, 
+       NotFoundException, 
        UnauthorizedException 
     } from '@nestjs/common';
 import { SignupDto } from './dto/signup.dto';
@@ -14,6 +15,9 @@ import { MoreThanOrEqual, Repository } from 'typeorm';
 import { LoginDto } from './dto';
 import { RefreshToken } from './refresh-token.entity';
 import { v4 as uuidv4 } from 'uuid';
+import { nanoid } from 'nanoid';
+import { ResetToken } from './reset-token.entity';
+import { MailerService } from './services/mail.service';
 
 @Injectable()
 export class AuthService {
@@ -22,7 +26,10 @@ export class AuthService {
         @InjectRepository(User) 
         private userRepository: Repository<User>,
         @InjectRepository(RefreshToken) 
-        private refreshTokenRepository: Repository<RefreshToken>
+        private refreshTokenRepository: Repository<RefreshToken>,
+        @InjectRepository(ResetToken) 
+        private resetTokenRepository: Repository<ResetToken>,
+        private mailService: MailerService
      ) {}
     async signup(signupData: SignupDto) {
         const {email, password, fullname} = signupData;
@@ -57,8 +64,8 @@ export class AuthService {
         const user = await this.userRepository.findOne({ where: { email }})
         if (!user) throw new UnauthorizedException('Credentials incorrect');
 
-        const pwMatche = await argon.verify(user.hash, password);
-        if(!pwMatche) throw new ForbiddenException('Credentials incorrect');
+        const pwMatch = await argon.verify(user.hash, password);
+        if(!pwMatch) throw new ForbiddenException('Credentials incorrect');
 
         return this.signToken(user.id, user.email);
 
@@ -119,6 +126,64 @@ export class AuthService {
         })
 
         await this.refreshTokenRepository.save(refreshToken)
+    }
+
+    async changePassword(userId: string ,oldPassword: string, newPassword: string) {
+        const user = await this.userRepository.findOne({ where: {id : userId }});
+        if (!user) {
+            throw new NotFoundException('User not found');
+          }
+
+        const pwMatch = await argon.verify(user.hash, oldPassword);
+        if(!pwMatch) throw new ForbiddenException('Credentials incorrect');
+
+        const newHashPass = await argon.hash(newPassword);
+
+        user.hash = newHashPass;
+
+        await this.userRepository.save(user)
+
+        
+    }
+
+    async forgotPassword(email: string) {
+         const expiryDate = new Date();
+         expiryDate.setHours(expiryDate.getHours() + 1)
+        const user = await this.userRepository.findOne({where: {email: email}})
+        if (user) {
+            const resetToken = nanoid(64)
+
+            const resetTokenEntity = this.resetTokenRepository.create({
+                token: resetToken,
+                userId: user.id,
+                expiryDate
+            });
+            await this.resetTokenRepository.save(resetTokenEntity);
+
+            this.mailService.sendPasswordResetEmail(email, resetToken)
+        }
+
+        return { message: "an email was sent to the user"}
+    }
+
+    async resetPassword(newPassword: string, resetToken: string) {
+                
+        const token = await this.resetTokenRepository.findOne({where: {
+            token: resetToken,
+                expiryDate: MoreThanOrEqual(new Date())
+            }})
+            if(!token) throw new UnauthorizedException('Invalid link')
+
+            const user = await this.userRepository.findOne({where: {id: token.userId}})
+            if (!user) throw new NotFoundException('User not found');
+                
+            const newHashPass = await argon.hash(newPassword);
+            user.hash = newHashPass;
+
+            await this.userRepository.save(user)
+            // Delete the used reset token
+            await this.resetTokenRepository.delete({ id: token.id });
+                    
     }
 }
 
