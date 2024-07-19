@@ -7,11 +7,17 @@ import { ConfigModule } from '@nestjs/config';
 import { User } from './users/user.entity';
 import { AuthModule } from './auth/auth.module';
 import { RefreshToken } from './auth/refresh-token.entity';
+import { JwtModule } from '@nestjs/jwt';
+import { JwtStrategy } from './auth/strategy';
 
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    JwtModule.register({
+      secret: process.env.JWT_SECRET,
+      signOptions: { expiresIn: '80m' },
+     }),
     UsersModule,
     TypeOrmModule.forRoot({
       type: process.env.DB_TYPE as any,
@@ -26,6 +32,6 @@ import { RefreshToken } from './auth/refresh-token.entity';
     AuthModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, JwtStrategy],
 })
 export class AppModule {}

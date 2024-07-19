@@ -75,7 +75,7 @@ export class AuthService {
             throw new UnauthorizedException('you need to login again');
         }
 
-        await this.refreshTokenRepository.delete({ id: token.id });
+        // await this.refreshTokenRepository.delete({ id: token.id });
         
         const user = await this.userRepository.findOne({ where: { id: token.userId } });
         if (!user) {
@@ -109,6 +109,8 @@ export class AuthService {
     async storeRefreshToken(token: string, userId ) {
         const expiryDate = new Date();
         expiryDate.setDate(expiryDate.getDate() + 3)
+
+        await this.refreshTokenRepository.delete({ userId });
 
         const refreshToken = this.refreshTokenRepository.create({
             token,

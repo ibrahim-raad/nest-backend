@@ -12,7 +12,10 @@ import { RefreshToken } from './refresh-token.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, RefreshToken]),
-    JwtModule.register({ }),
+    JwtModule.register({
+      secret: process.env.JWT_SECRET,
+      signOptions: { expiresIn: '80m' },
+     }),
     ConfigModule.forRoot({
       isGlobal: true,
     }),
