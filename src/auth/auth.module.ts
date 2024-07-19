@@ -7,17 +7,20 @@ import { ConfigModule } from '@nestjs/config';
 import { UsersModule } from 'src/users/users.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from 'src/users/user.entity';
+import { RefreshToken } from './refresh-token.entity';
 
 @Module({
-  imports: [JwtModule.register({ }),
+  imports: [
+    TypeOrmModule.forFeature([User, RefreshToken]),
+    JwtModule.register({ }),
     ConfigModule.forRoot({
       isGlobal: true,
     }),
     UsersModule,
-    TypeOrmModule.forFeature([User])
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
+  exports: [AuthService]
 
 })
 export class AuthModule {}

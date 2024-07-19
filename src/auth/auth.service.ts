@@ -1,18 +1,28 @@
-import { ConflictException, ForbiddenException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { 
+    ConflictException,
+     ForbiddenException,
+      Injectable,
+       InternalServerErrorException, 
+       UnauthorizedException 
+    } from '@nestjs/common';
 import { SignupDto } from './dto/signup.dto';
 import { JwtService } from '@nestjs/jwt';
 import { User } from 'src/users/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as argon from 'argon2';
-import { Repository } from 'typeorm';
+import { MoreThanOrEqual, Repository } from 'typeorm';
 import { LoginDto } from './dto';
+import { RefreshToken } from './refresh-token.entity';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class AuthService {
     constructor(
          private jwt: JwtService,
         @InjectRepository(User) 
-        private userRepository: Repository<User>
+        private userRepository: Repository<User>,
+        @InjectRepository(RefreshToken) 
+        private refreshTokenRepository: Repository<RefreshToken>
      ) {}
     async signup(signupData: SignupDto) {
         const {email, password, fullname} = signupData;
@@ -45,18 +55,37 @@ export class AuthService {
         const { email, password } = loginData;
 
         const user = await this.userRepository.findOne({ where: { email }})
-        
         if (!user) throw new UnauthorizedException('Credentials incorrect');
 
         const pwMatche = await argon.verify(user.hash, password);
-
         if(!pwMatche) throw new ForbiddenException('Credentials incorrect');
 
         return this.signToken(user.id, user.email);
 
     }
 
-    async signToken(userId: number, email: string,): Promise<{access_token: string}> {
+    async refreshToken(refreshToken: string) {
+        const token = await this.refreshTokenRepository.findOne({
+            where: {
+                token: refreshToken,
+                expiryDate: MoreThanOrEqual(new Date())
+            }
+        })
+        if(!token) {
+            throw new UnauthorizedException('you need to login again');
+        }
+
+        await this.refreshTokenRepository.delete({ id: token.id });
+        
+        const user = await this.userRepository.findOne({ where: { id: token.userId } });
+        if (!user) {
+          throw new UnauthorizedException('User not found');
+        }
+    
+        return this.signToken(user.id, user.email);
+    }
+
+    async signToken(userId: string, email: string,): Promise<{access_token: string, refresh_token: string}> {
         const payload = {
             sub: userId,
             email,
@@ -65,10 +94,30 @@ export class AuthService {
 
         const token = await this.jwt.signAsync(payload, {
             expiresIn: '80m',
-            secret: secret
+             secret
         })
+        // Refresh token 
+        const refreshToken = uuidv4();
+        await this.storeRefreshToken(refreshToken, userId)
+
         return {
-            access_token: token
+            access_token: token,
+            refresh_token: refreshToken
         }
     }
+
+    async storeRefreshToken(token: string, userId ) {
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + 3)
+
+        const refreshToken = this.refreshTokenRepository.create({
+            token,
+            userId,
+            expiryDate
+        })
+
+        await this.refreshTokenRepository.save(refreshToken)
+    }
 }
+
+

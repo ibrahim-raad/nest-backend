@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { User } from './users/user.entity';
 import { AuthModule } from './auth/auth.module';
+import { RefreshToken } from './auth/refresh-token.entity';
 
 
 @Module({
@@ -19,7 +20,7 @@ import { AuthModule } from './auth/auth.module';
       username: process.env.PG_USER,
       password: process.env.PG_PASSWORD,
       database: process.env.PG_DB,
-      entities:[User],
+      entities:[User, RefreshToken],
       synchronize: true,
     }),
     AuthModule,
